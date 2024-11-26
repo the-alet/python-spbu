@@ -14,13 +14,15 @@ class Node:
         self.neighbours = []
         
     def getNeighbours(self, F):    
-        if self.x > 0 and self.x < WIDTH - 1:
-            if not F[self.y][self.x - 1].isWall: self.neighbours.append(F[self.y][self.x - 1])
+        if self.x < WIDTH - 1:
             if not F[self.y][self.x + 1].isWall: self.neighbours.append(F[self.y][self.x + 1])
-        if self.y > 0 and self.y < HEIGHT - 1:
-            if not F[self.y - 1][self.x].isWall: self.neighbours.append(F[self.y - 1][self.x])
+        if self.x > 0:
+            if not F[self.y][self.x - 1].isWall: self.neighbours.append(F[self.y][self.x - 1])
+        if self.y < HEIGHT - 1:
             if not F[self.y + 1][self.x].isWall: self.neighbours.append(F[self.y + 1][self.x])
-        return self.neighbours
+        if self.y > 0:
+            if not F[self.y - 1][self.x].isWall: self.neighbours.append(F[self.y - 1][self.x])
+        return list(set(self.neighbours))
 
 def fieldInit(W, H):
     FIELD = [[Node(x, y, randint(0, 100) < chance) for x in range(WIDTH)] for y in range(HEIGHT)]
@@ -57,23 +59,35 @@ def getManhattanDist(a, b):
 
 
 def buildWayField(F, r):
-    # queue = [r] + r
+    wayMap = [[-1 for x in range(WIDTH)] for y in range(HEIGHT)]
+    q = [r]
+    wayMap[r.y][r.x] = 0
+    while len(q) > 0:
+        a = q[0]
+        q = q[1:]
+        for n in a.neighbours:
+            if wayMap[n.y][n.x] == -1:
+                wayMap[n.y][n.x] = wayMap[a.y][a.x] + 1
+                q.append(n)
+
+    return wayMap
+
+def copyDist(F, wM):
+    for y in range(HEIGHT):
+        for x in range(WIDTH):
+            F[y][x].dist = wM[y][x]
+
+    return F
     
-    # curr = 0
-    # while curr <= len(queue):
-    #     n = queue[curr].neighbours
-    #     for i in range(len(n)): n[i].dist = queue[curr].dist + 1
-    #     queue.extend(n)
-    #     queue = list(set(queue))
-    #     for i in queue: print((i.x, i.y))
-    #     curr += 1
-
-    # wayMap = [[0 for x in range(WIDTH)] for y in range(HEIGHT)]
-    # for n in queue:
-    #     wayMap[n.y][n.x] = n.dist
-
-    return []#wayMap
-#### TO DO ^^^^^^ 
+def getWay(F, root, dest):
+    if dest.dist == -1: return []
+    q = [dest]
+    while q[-1] != root:
+        for n in q[-1].neighbours:
+            if n.dist == q[-1].dist - 1:
+                q.append(n)
+                break
+    return q
 
 if __name__ == "__main__":
     WIDTH, HEIGHT = map(int, input().split())
@@ -88,5 +102,16 @@ if __name__ == "__main__":
 
     wayMap = buildWayField(FIELD, root)
 
-    for n in wayMap:
-        print(*n)  
+    # for n in wayMap:
+    #     for m in n:
+    #         print(f'{m:>3}', end = " ")
+    #     print()
+
+    FIELD = copyDist(FIELD, wayMap)
+
+    way = getWay(FIELD, root, dest)
+    way_xy = reversed([(i.x, i.y) for i in way])
+    if way == []:
+        print("No way")
+
+    print(*way_xy)

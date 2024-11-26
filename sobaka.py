@@ -5,8 +5,8 @@ from pygame.locals import *
 from pygameZoom import PygameZoom
 
 # Константы
-WIDTH, HEIGHT = 150, 150
-SCALE = 5
+WIDTH, HEIGHT = 50, 50
+SCALE = 20
 WINDOW_WIDTH, WINDOW_HEIGHT = WIDTH * SCALE, HEIGHT * SCALE
 BLUE = (0, 0, 255)
 LIGHT_BLUE = (173, 216, 230)
@@ -16,7 +16,10 @@ FPS = 2
 
 # Направления движения
 DIRECTIONS = [(0, 1), (1, 0), (0, -1), (-1, 0)]  # вниз, вправо, вверх, влево
-
+def sign(x):
+    if x > 0: return 1
+    if x < 0: return -1
+    return 0
 
 class Game:
     def __init__(self):
@@ -25,6 +28,14 @@ class Game:
         pygame.display.set_caption("Sobaka")
         self.clock = pygame.time.Clock()
         self.running = True
+
+        self.edge_positions = []
+        for x in (0, WIDTH):
+            self.edge_positions.append((x, 0)) 
+            self.edge_positions.append((x, HEIGHT - 1))
+        for y in (1, HEIGHT - 1): 
+            self.edge_positions.append((0, y))
+            self.edge_positions.append((WIDTH - 1, y))
 
         self.non_edge_positions = []
         for y in (10, HEIGHT - 10):
@@ -37,6 +48,7 @@ class Game:
         self.safe_pos = [WIDTH // 2, HEIGHT // 2]
         self.red_dot_pos = [0, 0]
         self.resque_fl = 0
+        self.catch_fl = 0
         self.trail = set()  # Множество для хранения следа
 
         # Создаем объект Zoom
@@ -91,7 +103,7 @@ class Game:
 
     def resque_prepare(self):
         self.resque_fl = 1
-        self.red_dot_pos = [0 if 2 * x < WIDTH else WIDTH - x, self.dog_pos[1]]
+        self.red_dot_pos = list(random.choice(self.edge_positions))
         
         # Выбираем случайную позицию не на краю поля
         p = random.choice(self.non_edge_positions)
@@ -100,15 +112,23 @@ class Game:
         # Перемещаем синюю точку на случайное место не на краю поля
         self.safe_pos = list(p)        
 
-    def rescue(self):
+    def resque(self):
         if not self.resque_fl: return
 
-        if self.red_dot_pos[0] == self.safe_pos[0] and self.red_dot_pos[1] == self.safe_pos[1]:
-            self.resque_fl = 0 
-            self.trail = set()
+        if self.red_dot_pos[0] == self.safe_pos[0] and self.red_dot_pos[1] == self.safe_pos[1] and self.catch_fl == 1:
+            self.resque_fl = 0
+            self.catch_fl = 0 
+            self.trail = set(self.trail)
             self.dog_pos = self.safe_pos
+        
+        if self.red_dot_pos[0] == self.dog_pos[0] and self.red_dot_pos[1] == self.dog_pos[1] and self.resque_fl == 1:
+            self.catch_fl = 1
 
-        dx, dy = self.safe_pos[0] - self.red_dot_pos[0], self.safe_pos[1] - self.red_dot_pos[1]
+        if self.catch_fl == 0:
+            dx, dy = self.dog_pos[0] - self.red_dot_pos[0], self.dog_pos[1] - self.red_dot_pos[1]            
+        else:
+            dx, dy = self.safe_pos[0] - self.red_dot_pos[0], self.safe_pos[1] - self.red_dot_pos[1]
+        
         if abs(dx) > abs(dy): self.red_dot_pos[0] += sign(dx)
         else: self.red_dot_pos[1] += sign(dy)
     
@@ -122,8 +142,9 @@ class Game:
             self.screen.fill(LIGHT_BLUE, (scaled_pos[0], scaled_pos[1], SCALE, SCALE))
 
         # Рисуем синюю точку
-        blue_scaled_pos = (self.dog_pos[0] * SCALE, self.dog_pos[1] * SCALE)
-        self.screen.fill(BLUE, (blue_scaled_pos[0], blue_scaled_pos[1], SCALE, SCALE))
+        if not self.catch_fl:
+            blue_scaled_pos = (self.dog_pos[0] * SCALE, self.dog_pos[1] * SCALE)
+            self.screen.fill(BLUE, (blue_scaled_pos[0], blue_scaled_pos[1], SCALE, SCALE))
 
         if self.resque_fl:
             self.screen.fill(RED, (self.red_dot_pos[0] * SCALE, self.red_dot_pos[1] * SCALE, SCALE, SCALE))

@@ -1,10 +1,91 @@
 from math import *
 from random import *
 from os import system
+import pygame
+from time import sleep
 
-chance = 30
+chance = 20
+
+WIDTH, HEIGHT = 50, 50#map(int, input().split())
+
+def visualize_astar(FIELD, scale=10):
+    width, height = WIDTH * scale, HEIGHT * scale
+    null = Node(-1, -1, True)
+    root, dest = null, null
+    running = True
+    flag = 0
+    way = []
+
+    pygame.init()
+    pygame.display.set_caption('A*')
+    game_surface = pygame.display.set_mode((width, height))
+    clock = pygame.time.Clock()
+
+    colors = {
+        "black": pygame.Color(0, 0, 0),
+        "white": pygame.Color(255, 255, 255),
+        "red": pygame.Color(255, 0, 0),
+        "green": pygame.Color(0, 255, 0),
+        "blue": pygame.Color(0, 0, 255)
+    }
+
+    while running:
+        # Draw the grid
+        game_surface.fill(colors["black"])
+        for y in FIELD:
+            for f in y:
+                color = colors["white"] if f.isWall else colors["black"]
+                pygame.draw.rect(game_surface, color, (f.x * scale, f.y * scale, scale, scale))
+        pygame.display.flip()
 
 
+        
+        for event in pygame.event.get():
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_ESCAPE:
+                    running = False
+                    pygame.quit()
+                    quit()
+            if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                pos = list(map(int, pygame.mouse.get_pos()))
+                res = (pos[0] < 0 and pos[0] >= WIDTH * scale and pos[1] < 0 and pos[1] >= HEIGHT * scale)
+                if res:
+                    continue
+                if flag == 0:
+                    root = FIELD[pos[1]//scale][pos[0]//scale]
+                    flag = 1
+                    wayF = buildWayField(FIELD, root)
+                else:
+                    dest = FIELD[pos[1]//scale][pos[0]//scale]
+                    FIELD = copyDist(FIELD, wayF)
+                    way = getWay(FIELD, root, dest)
+                    flag = 0
+                    root, dest = null, null
+        rway = [way[i] for i in range(len(way) - 1, -1, -1)]
+        way = rway
+        if way == []:
+            continue
+        # Draw the path
+        pygame.draw.rect(game_surface, colors["green"], (way[0].x * scale, way[0].y * scale, scale, scale))
+        for n in way[1:-1]:
+            pygame.draw.rect(game_surface, colors["red"], (n.x * scale, n.y * scale, scale, scale))
+            sleep(0.08)
+            pygame.display.flip()
+
+        # Highlight start and destination
+        pygame.draw.rect(game_surface, colors["blue"], (way[-1].x * scale, way[-1].y * scale, scale, scale))
+
+        for n in way:
+            pygame.draw.rect(game_surface, colors["black"], (n.x * scale, n.y * scale, scale, scale))
+            sleep(0.08)
+            pygame.display.flip()
+        way = []
+        
+        clock.tick(10)
+
+    # pygame.quit()
+
+# Call the visualization function after computing the path
 class Node:
     def __init__(self, x, y, isWall):
         self.x = x
@@ -90,28 +171,5 @@ def getWay(F, root, dest):
     return q
 
 if __name__ == "__main__":
-    WIDTH, HEIGHT = map(int, input().split())
-
     FIELD = fieldInit(WIDTH, HEIGHT)
-    
-    draw(FIELD)
-
-    root, dest = getRootDest(FIELD)
-
-    # system("cls")
-
-    wayMap = buildWayField(FIELD, root)
-
-    # for n in wayMap:
-    #     for m in n:
-    #         print(f'{m:>3}', end = " ")
-    #     print()
-
-    FIELD = copyDist(FIELD, wayMap)
-
-    way = getWay(FIELD, root, dest)
-    way_xy = reversed([(i.x, i.y) for i in way])
-    if way == []:
-        print("No way")
-
-    print(*way_xy)
+    visualize_astar(FIELD)

@@ -6,7 +6,9 @@ def draw_branch(t, branch_length):
         # Random angle and reduction for branches
         angle = random.randint(15, 45)
         reduction = random.randint(10, 20)
-        
+
+        t.width(branch_length / 8)
+
         # Move the turtle forward
         t.forward(branch_length)
         

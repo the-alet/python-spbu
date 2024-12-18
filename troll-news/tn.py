@@ -1,7 +1,7 @@
 import difflib
 import json
 import requests
-import vector
+from difflib import SequenceMatcher
 from bs4 import BeautifulSoup
 from typing import List
 import os
@@ -86,34 +86,44 @@ class TrollFactory:
 
 
 
-    def find_similar_joke(self, new_line: str):
-        jkstxt = []
+    def find_similar_joke(self, news: list[News]) -> list[(News, Joke, float)]:
+        result = []
+        for string1 in news:
+            best_match = None
+            highest_similarity = 0.0
 
-        for joke in self.jokes:
-            jkstxt.append(joke.text)
-        # Используем difflib для нахождения наиболее похожей строки
-        closest_match = difflib.get_close_matches(new_line, jkstxt, n=1, cutoff=0.0)
+            for string2 in self.jokes:
+                # Оцениваем схожесть строк
+                similarity = SequenceMatcher(None, string1.full_text, string2.text).ratio()
+                if similarity > highest_similarity:
+                    highest_similarity = similarity
+                    best_match = string2
 
-        # Возвращаем наиболее похожую шутку или сообщение о том, что совпадений не найдено
-        return closest_match[0] if closest_match else "не найден"
+            # Добавляем в результат кортеж из строки, её лучшего совпадения и коэффициента схожести
+            result.append((string1, best_match, highest_similarity))
+
+            # Сортируем по убыванию коэффициента схожести
+        result.sort(key=lambda x: x[2], reverse=True)
+
+        return result
 
 
     def generate_troll_news(self, news_list: List[News]) -> List[News]:
-        for news in news_list:
-            similar_joke = self.find_similar_joke(news.full_text)
-            news.full_text += f"\n\nАнекдот: {similar_joke}"
-        return news_list
+        news = []
+        tns = self.find_similar_joke(news_list)
+        for n in tns:
+            n[0].full_text += f"\nАнекдот: {n[1].text}\nКоэффициент схожести: {n[2]}\n"
+            news.append(n[0])
+        return news
 
 class NewsSaver:
     @staticmethod
     def save_to_file(news_list: List[News], file_path: str):
         with open(file_path, 'w', encoding='utf-8') as f:
             for news in news_list:
-                f.write(f"{news.title}\n\n")
-                f.write(f"{news.annotation}\n\n")
-                f.write(f"Анекдот с похожим текстом...\n")
+                f.write(f"{news.title}\n")
                 f.write(f"{news.full_text}\n")
-                f.write("------------------------------------------------------\n")
+                f.write("------------------------------------------------------\n\n")
 
 # Example usage
 if __name__ == "__main__":
